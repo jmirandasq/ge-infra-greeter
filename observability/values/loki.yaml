@@ -24,5 +24,11 @@ write:
 backend:
   replicas: 0
 
+chunksCache:
+  enabled: false
+
+resultsCache:
+  enabled: false
+
 minio:
   enabled: false
