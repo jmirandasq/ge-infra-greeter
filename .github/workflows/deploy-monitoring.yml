@@ -1,0 +1,48 @@
+name: Deploy Monitoring Stack
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'observability/**'
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    name: Deploy Grafana Stack
+    runs-on: self-hosted
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Add Helm repos
+        run: |
+          helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
+          helm repo add grafana https://grafana.github.io/helm-charts
+          helm repo update
+
+      - name: Create namespace
+        run: kubectl create namespace monitoring --dry-run=client -o yaml | kubectl apply -f -
+
+      - name: Deploy Prometheus + Grafana
+        run: |
+          helm upgrade --install prometheus prometheus-community/kube-prometheus-stack \
+            --namespace monitoring \
+            --values observability/values/prometheus.yaml \
+            --wait --timeout 5m
+
+      - name: Deploy Loki
+        run: |
+          helm upgrade --install loki grafana/loki \
+            --namespace monitoring \
+            --values observability/values/loki.yaml \
+            --wait --timeout 5m
+
+      - name: Deploy Tempo
+        run: |
+          helm upgrade --install tempo grafana/tempo \
+            --namespace monitoring \
+            --values observability/values/tempo.yaml \
+            --wait --timeout 5m
+
+      - name: Show status
+        run: kubectl get pods -n monitoring
