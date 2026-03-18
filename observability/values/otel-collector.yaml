@@ -32,7 +32,7 @@ config:
   service:
     pipelines:
       logs:
-        receivers: [filelog/containerLogs]
+        receivers: [filelog]
         processors: [memory_limiter, batch]
         exporters: [otlphttp/loki]
       traces:
