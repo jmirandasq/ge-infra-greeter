@@ -3,22 +3,12 @@ mode: daemonset
 image:
   repository: otel/opentelemetry-collector-contrib
 
+presets:
+  logsCollection:
+    enabled: true
+    includeCollectorLogs: false
+
 config:
-  receivers:
-    otlp:
-      protocols:
-        grpc:
-          endpoint: 0.0.0.0:4317
-        http:
-          endpoint: 0.0.0.0:4318
-
-  processors:
-    batch: {}
-    memory_limiter:
-      check_interval: 5s
-      limit_percentage: 80
-      spike_limit_percentage: 25
-
   exporters:
     otlphttp/loki:
       endpoint: http://loki-gateway.monitoring.svc.cluster.local/otlp
@@ -29,21 +19,21 @@ config:
       tls:
         insecure: true
 
+  processors:
+    batch: {}
+    memory_limiter:
+      check_interval: 5s
+      limit_percentage: 80
+      spike_limit_percentage: 25
+
   service:
     pipelines:
       logs:
-        receivers: [filelog]
-        processors: [memory_limiter, batch]
         exporters: [otlphttp/loki]
       traces:
         receivers: [otlp]
         processors: [memory_limiter, batch]
         exporters: [otlp/tempo]
-
-presets:
-  logsCollection:
-    enabled: true
-    includeCollectorLogs: false
 
 resources:
   requests:
