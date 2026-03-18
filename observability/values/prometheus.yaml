@@ -8,6 +8,10 @@ grafana:
       url: http://loki-gateway.monitoring.svc.cluster.local
       access: proxy
       isDefault: false
+      jsonData:
+        httpHeaderName1: X-Scope-OrgID
+      secureJsonData:
+        httpHeaderValue1: "fake"
     - name: Tempo
       type: tempo
       url: http://tempo.monitoring.svc.cluster.local:3100
