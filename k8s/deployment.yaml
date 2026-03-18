@@ -20,7 +20,7 @@ spec:
         runAsGroup: 65532
       containers:
         - name: go-app
-          image: ghcr.io/jmirandasq/go-app:sha-c46355e
+          image: ghcr.io/jmirandasq/ge-go-greeter:sha-c46355e
           ports:
             - containerPort: 8080
           securityContext:
