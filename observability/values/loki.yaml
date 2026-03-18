@@ -16,5 +16,12 @@ singleBinary:
       cpu: 250m
       memory: 256Mi
 
+read:
+  replicas: 0
+write:
+  replicas: 0
+backend:
+  replicas: 0
+
 minio:
   enabled: false
