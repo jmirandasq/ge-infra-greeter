@@ -2,6 +2,17 @@ grafana:
   enabled: true
   service:
     type: NodePort
+  additionalDataSources:
+    - name: Loki
+      type: loki
+      url: http://loki-gateway.monitoring.svc.cluster.local
+      access: proxy
+      isDefault: false
+    - name: Tempo
+      type: tempo
+      url: http://tempo.monitoring.svc.cluster.local:3100
+      access: proxy
+      isDefault: false
 
 prometheus:
   prometheusSpec:
