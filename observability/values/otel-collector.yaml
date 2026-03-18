@@ -5,13 +5,6 @@ image:
 
 config:
   receivers:
-    filelog:
-      include:
-        - /var/log/pods/*/*/*.log
-      include_file_path: true
-      operators:
-        - type: container
-          id: container-parser
     otlp:
       protocols:
         grpc:
@@ -39,7 +32,7 @@ config:
   service:
     pipelines:
       logs:
-        receivers: [filelog]
+        receivers: [filelog/containerLogs]
         processors: [memory_limiter, batch]
         exporters: [otlphttp/loki]
       traces:
@@ -49,7 +42,8 @@ config:
 
 presets:
   logsCollection:
-    enabled: false
+    enabled: true
+    includeCollectorLogs: false
 
 resources:
   requests:
