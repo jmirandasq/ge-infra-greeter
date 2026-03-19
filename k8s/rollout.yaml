@@ -1,9 +1,8 @@
-apiVersion: apps/v1
-kind: Deployment
+apiVersion: argoproj.io/v1alpha1
+kind: Rollout
 metadata:
   name: go-app
-  labels:
-    app: go-app
+  namespace: ge-go-greeter
 spec:
   replicas: 2
   selector:
@@ -20,7 +19,7 @@ spec:
         runAsGroup: 65532
       containers:
         - name: go-app
-          image: ghcr.io/jmirandasq/ge-go-greeter:sha-c77d4ba
+          image: ghcr.io/jmirandasq/ge-go-greeter:IMAGE_TAG
           env:
             - name: OTEL_EXPORTER_OTLP_ENDPOINT
               value: "otel-collector-opentelemetry-collector.monitoring.svc.cluster.local:4317"
@@ -50,3 +49,11 @@ spec:
               port: 8080
             initialDelaySeconds: 3
             periodSeconds: 5
+  strategy:
+    canary:
+      steps:
+        - setWeight: 20
+        - pause: {}
+        - setWeight: 50
+        - pause: {duration: 30s}
+        - setWeight: 100
