@@ -1,0 +1,30 @@
+name: Deploy Envoy Gateway
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/deploy-envoy-gateway.yml'
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    name: Deploy Envoy Gateway
+    runs-on: self-hosted
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Add Helm repo
+        run: |
+          helm repo add envoy-gateway https://charts.gateway.envoyproxy.io
+          helm repo update
+
+      - name: Install Envoy Gateway
+        run: |
+          helm upgrade --install envoy-gateway envoy-gateway/gateway-helm \
+            --namespace envoy-gateway \
+            --create-namespace \
+            --wait --timeout 3m
+
+      - name: Show status
+        run: kubectl get pods -n envoy-gateway

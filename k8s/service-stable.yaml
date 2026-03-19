@@ -1,0 +1,16 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: go-app-stable
+  namespace: ge-go-greeter
+  labels:
+    app: go-app
+    version: stable
+spec:
+  selector:
+    app: go-app
+    version: stable
+  ports:
+    - port: 80
+      targetPort: 8080
+  type: ClusterIP
