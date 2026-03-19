@@ -19,7 +19,7 @@ spec:
         runAsGroup: 65532
       containers:
         - name: go-app
-          image: ghcr.io/jmirandasq/ge-go-greeter:sha-86fd1b4
+          image: ghcr.io/jmirandasq/ge-go-greeter:sha-6da10c1
           env:
             - name: OTEL_EXPORTER_OTLP_ENDPOINT
               value: "otel-collector-opentelemetry-collector.monitoring.svc.cluster.local:4317"
