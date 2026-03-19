@@ -3,6 +3,9 @@ mode: daemonset
 image:
   repository: otel/opentelemetry-collector-contrib
 
+service:
+  enabled: true
+
 presets:
   logsCollection:
     enabled: true
