@@ -14,14 +14,11 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Add Helm repo
-        run: |
-          helm repo add envoy-gateway https://charts.gateway.envoyproxy.io
-          helm repo update
-
       - name: Install Envoy Gateway
         run: |
-          helm upgrade --install envoy-gateway envoy-gateway/gateway-helm \
+          helm upgrade --install envoy-gateway \
+            oci://docker.io/envoyproxy/gateway-helm \
+            --version v1.3.2 \
             --namespace envoy-gateway \
             --create-namespace \
             --wait --timeout 3m
