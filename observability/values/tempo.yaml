@@ -1,4 +1,5 @@
 tempo:
+  searchEnabled: true
   resources:
     requests:
       cpu: 100m
