@@ -143,7 +143,7 @@ grafana:
                     to: 0
                   datasourceUid: loki
                   model:
-                    expr: 'sum(count_over_time({namespace="ge-go-greeter"} |~ "(?i)error" [5m]))'
+                    expr: 'sum(count_over_time({k8s_namespace_name="ge-go-greeter"} |~ "(?i)error" [5m]))'
                     instant: true
                     refId: A
                 - refId: C
