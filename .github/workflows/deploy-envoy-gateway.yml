@@ -21,6 +21,7 @@ jobs:
             --version v1.3.2 \
             --namespace envoy-gateway \
             --create-namespace \
+            --values envoy-gateway/values.yaml \
             --wait --timeout 3m
 
       - name: Show status
