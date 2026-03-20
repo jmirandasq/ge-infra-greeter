@@ -14,11 +14,27 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Apply Keycloak manifests
-        run: kubectl apply -f keycloak/
+      - name: Apply namespace
+        run: kubectl apply -f keycloak/namespace.yaml
+
+      - name: Apply operator (CRDs + RBAC + Deployment)
+        run: kubectl apply -f keycloak/operator.yaml
+
+      - name: Wait for CRDs to be established
+        run: |
+          kubectl wait crd/keycloaks.k8s.keycloak.org \
+            --for=condition=Established --timeout=60s
+          kubectl wait crd/keycloakrealmimports.k8s.keycloak.org \
+            --for=condition=Established --timeout=60s
+
+      - name: Apply PostgreSQL
+        run: kubectl apply -f keycloak/postgres.yaml
 
       - name: Wait for PostgreSQL
         run: kubectl rollout status statefulset/postgres -n keycloak --timeout=3m
+
+      - name: Apply Keycloak CR
+        run: kubectl apply -f keycloak/keycloak.yaml
 
       - name: Wait for Keycloak to be Ready
         run: |
