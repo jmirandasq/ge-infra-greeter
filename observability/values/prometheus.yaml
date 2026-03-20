@@ -5,6 +5,7 @@ grafana:
   additionalDataSources:
     - name: Loki
       type: loki
+      uid: loki
       url: http://loki-gateway.monitoring.svc.cluster.local
       access: proxy
       isDefault: false
@@ -17,6 +18,163 @@ grafana:
       url: http://tempo.monitoring.svc.cluster.local:3200
       access: proxy
       isDefault: false
+  alerting:
+    contactpoints.yaml:
+      apiVersion: 1
+      contactPoints:
+        - orgId: 1
+          name: default-receiver
+          receivers:
+            - uid: default-receiver
+              type: email
+              settings:
+                addresses: alerts@example.com
+              disableResolveMessage: false
+    policies.yaml:
+      apiVersion: 1
+      policies:
+        - orgId: 1
+          receiver: default-receiver
+          group_by:
+            - alertname
+            - severity
+          group_wait: 30s
+          group_interval: 5m
+          repeat_interval: 12h
+    rules.yaml:
+      apiVersion: 1
+      groups:
+        - orgId: 1
+          name: go-app
+          folder: Go App Alerts
+          interval: 1m
+          rules:
+            - uid: go-app-http-401
+              title: "HTTP 401 Unauthorized"
+              condition: C
+              data:
+                - refId: A
+                  relativeTimeRange:
+                    from: 300
+                    to: 0
+                  datasourceUid: prometheus
+                  model:
+                    expr: 'sum(increase(envoy_cluster_upstream_rq{envoy_response_code="401"}[5m])) > 0'
+                    instant: true
+                    refId: A
+                - refId: C
+                  datasourceUid: __expr__
+                  model:
+                    type: threshold
+                    refId: C
+                    expression: A
+                    conditions:
+                      - evaluator:
+                          type: gt
+                          params:
+                            - 0
+                        operator:
+                          type: and
+                        query:
+                          params:
+                            - C
+                        reducer:
+                          type: last
+                          params: []
+                        type: query
+              noDataState: NoData
+              execErrState: Error
+              for: 1m
+              annotations:
+                summary: "HTTP 401 Unauthorized detectado en go-app"
+                description: "Se detectaron {{ $value }} respuestas HTTP 401 en los ultimos 5 minutos."
+              labels:
+                severity: warning
+                app: go-app
+            - uid: go-app-http-404
+              title: "HTTP 404 Not Found"
+              condition: C
+              data:
+                - refId: A
+                  relativeTimeRange:
+                    from: 300
+                    to: 0
+                  datasourceUid: prometheus
+                  model:
+                    expr: 'sum(increase(envoy_cluster_upstream_rq{envoy_response_code="404"}[5m])) > 0'
+                    instant: true
+                    refId: A
+                - refId: C
+                  datasourceUid: __expr__
+                  model:
+                    type: threshold
+                    refId: C
+                    expression: A
+                    conditions:
+                      - evaluator:
+                          type: gt
+                          params:
+                            - 0
+                        operator:
+                          type: and
+                        query:
+                          params:
+                            - C
+                        reducer:
+                          type: last
+                          params: []
+                        type: query
+              noDataState: NoData
+              execErrState: Error
+              for: 1m
+              annotations:
+                summary: "HTTP 404 Not Found detectado en go-app"
+                description: "Se detectaron {{ $value }} respuestas HTTP 404 en los ultimos 5 minutos."
+              labels:
+                severity: warning
+                app: go-app
+            - uid: go-app-log-errors
+              title: "Errores en logs de la aplicacion"
+              condition: C
+              data:
+                - refId: A
+                  relativeTimeRange:
+                    from: 300
+                    to: 0
+                  datasourceUid: loki
+                  model:
+                    expr: 'sum(count_over_time({namespace="ge-go-greeter"} |~ "(?i)error" [5m]))'
+                    instant: true
+                    refId: A
+                - refId: C
+                  datasourceUid: __expr__
+                  model:
+                    type: threshold
+                    refId: C
+                    expression: A
+                    conditions:
+                      - evaluator:
+                          type: gt
+                          params:
+                            - 0
+                        operator:
+                          type: and
+                        query:
+                          params:
+                            - C
+                        reducer:
+                          type: last
+                          params: []
+                        type: query
+              noDataState: NoData
+              execErrState: Error
+              for: 1m
+              annotations:
+                summary: "Errores detectados en logs de go-app"
+                description: "Se detectaron {{ $value }} lineas con errores en los ultimos 5 minutos."
+              labels:
+                severity: critical
+                app: go-app
 
 prometheus:
   prometheusSpec:
@@ -32,4 +190,12 @@ prometheus:
         memory: 512Mi
 
 alertmanager:
-  enabled: false
+  enabled: true
+  alertmanagerSpec:
+    resources:
+      requests:
+        cpu: 50m
+        memory: 64Mi
+      limits:
+        cpu: 100m
+        memory: 128Mi
