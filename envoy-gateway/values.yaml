@@ -5,10 +5,3 @@ resources:
   limits:
     cpu: 500m
     memory: 256Mi
-
-envoyProxy:
-  metrics:
-    podMonitor:
-      enabled: true
-      additionalLabels:
-        release: prometheus
