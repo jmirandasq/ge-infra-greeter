@@ -12,7 +12,7 @@ spec:
     - matches:
         - headers:
             - name: X-Version
-              value: canary
+              value: abtest
       backendRefs:
         - name: go-app-canary
           port: 80
