@@ -1,0 +1,89 @@
+# ── Secret: credenciales del admin ────────────────────────────────────────────
+# En producción: usar Sealed Secrets o External Secrets Operator
+apiVersion: v1
+kind: Secret
+metadata:
+  name: keycloak-admin-secret
+  namespace: keycloak
+type: Opaque
+stringData:
+  username: admin
+  password: admin-pass   # cambiar en producción
+---
+# ── Keycloak CR ────────────────────────────────────────────────────────────────
+apiVersion: k8s.keycloak.org/v2alpha1
+kind: Keycloak
+metadata:
+  name: keycloak
+  namespace: keycloak
+spec:
+  instances: 1
+
+  # Base de datos PostgreSQL
+  db:
+    vendor: postgres
+    host: postgres.keycloak.svc.cluster.local
+    port: 5432
+    database: keycloak
+    usernameSecret:
+      name: keycloak-db-secret
+      key: username
+    passwordSecret:
+      name: keycloak-db-secret
+      key: password
+
+  # Hostname — accesible internamente y via NodePort
+  # Para producción usar el FQDN real con TLS
+  hostname:
+    hostname: keycloak.192.168.1.20.nip.io
+    strict: false
+    strictBackchannel: false
+
+  # HTTP habilitado para el homelab (sin TLS interno)
+  http:
+    httpEnabled: true
+    httpPort: 8080
+
+  # Proxy — Keycloak esta detras de Envoy/Ingress
+  proxy:
+    headers: xforwarded
+
+  # Credenciales del admin
+  additionalOptions:
+    - name: KEYCLOAK_ADMIN
+      secret:
+        name: keycloak-admin-secret
+        key: username
+    - name: KEYCLOAK_ADMIN_PASSWORD
+      secret:
+        name: keycloak-admin-secret
+        key: password
+
+  startOptimized: false   # false = modo dev sin build optimizado
+
+  resources:
+    requests:
+      cpu: 500m
+      memory: 512Mi
+    limits:
+      cpu: "2"
+      memory: 1Gi
+---
+# ── Service NodePort para acceso externo ───────────────────────────────────────
+# El operator crea un Service ClusterIP; este NodePort permite acceder
+# desde la red del homelab para administración y para que Terraform pueda
+# configurar los recursos.
+apiVersion: v1
+kind: Service
+metadata:
+  name: keycloak-nodeport
+  namespace: keycloak
+spec:
+  type: NodePort
+  selector:
+    app: keycloak           # selector del StatefulSet que crea el operator
+  ports:
+    - name: http
+      port: 8080
+      targetPort: 8080
+      nodePort: 30080       # http://192.168.1.20:30080

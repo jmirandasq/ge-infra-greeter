@@ -1,0 +1,31 @@
+name: Deploy Keycloak
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'keycloak/**'
+  workflow_dispatch:
+
+jobs:
+  install-keycloak:
+    name: Install Keycloak Operator
+    runs-on: self-hosted
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Apply Keycloak manifests
+        run: kubectl apply -f keycloak/
+
+      - name: Wait for PostgreSQL
+        run: kubectl rollout status statefulset/postgres -n keycloak --timeout=3m
+
+      - name: Wait for Keycloak to be Ready
+        run: |
+          kubectl wait keycloak/keycloak \
+            --for=condition=Ready \
+            --namespace keycloak \
+            --timeout=5m
+
+      - name: Show status
+        run: kubectl get pods -n keycloak
