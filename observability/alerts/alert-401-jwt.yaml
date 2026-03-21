@@ -1,0 +1,90 @@
+# PrometheusRule — Alerta de errores 401 por JWT inválido o sin permisos
+#
+# Contexto:
+#   Cuando Envoy Gateway rechaza un request por JWT inválido, ausente o expirado,
+#   devuelve 401 ANTES de llegar al upstream. Estas respuestas se registran en
+#   las métricas downstream de Envoy (no en upstream_rq).
+#
+#   Métrica clave: envoy_http_downstream_rq_xx con label response_code_class="4"
+#   Para 401 específico: envoy_http_downstream_rq_total filtrado por response_code
+#
+# Cómo probar:
+#   # Sin token → 401
+#   curl -X POST http://192.168.1.21:30444/greet \
+#     -H "Content-Type: application/json" -d '{"name":"test"}'
+#
+#   # Token expirado/inválido → 401
+#   curl -X POST http://192.168.1.21:30444/greet \
+#     -H "Authorization: Bearer token.invalido.aqui" \
+#     -H "Content-Type: application/json" -d '{"name":"test"}'
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: jwt-auth-alerts
+  namespace: monitoring
+  labels:
+    release: prometheus   # necesario para que Prometheus Operator lo descubra
+spec:
+  groups:
+    - name: jwt-auth
+      interval: 30s
+      rules:
+        # ── Alerta principal: 401 por JWT inválido o sin permisos ──────────────
+        - alert: JWTAuthUnauthorized
+          expr: |
+            increase(
+              envoy_http_downstream_rq_total{
+                namespace="ge-go-greeter",
+                response_code="401"
+              }[5m]
+            ) > 0
+          for: 0m   # firing inmediato para detectar cualquier 401
+          labels:
+            severity: warning
+            team: platform
+            component: envoy-jwt
+          annotations:
+            summary: "401 Unauthorized en ge-go-greeter — JWT inválido o sin permisos"
+            description: |
+              Se detectaron {{ $value | humanize }} respuestas 401 en los últimos 5 minutos
+              en el namespace ge-go-greeter.
+
+              Causas posibles:
+              - Token JWT ausente en el header Authorization
+              - Token JWT expirado (ttl por defecto: 15 minutos)
+              - Token firmado con una clave incorrecta (wrong realm/issuer)
+              - Cliente sin el rol requerido en el JWT
+
+              Cómo obtener un token válido:
+                curl -s -X POST http://192.168.1.20:30080/realms/ge-app/protocol/openid-connect/token \
+                  -d "grant_type=client_credentials" \
+                  -d "client_id=ge-go-greeter" \
+                  -d "client_secret=<SECRET>"
+            runbook_url: "https://github.com/jmiranda/ge-infra-greeter/blob/main/docs/runbooks/jwt-401.md"
+
+        # ── Alerta de tasa alta: >10 errores 401 en 5 minutos ─────────────────
+        # Puede indicar un ataque de fuerza bruta o una rotación de credenciales
+        # que no se actualizó en todos los consumidores.
+        - alert: JWTAuthUnauthorizedHigh
+          expr: |
+            increase(
+              envoy_http_downstream_rq_total{
+                namespace="ge-go-greeter",
+                response_code="401"
+              }[5m]
+            ) > 10
+          for: 1m
+          labels:
+            severity: critical
+            team: platform
+            component: envoy-jwt
+          annotations:
+            summary: "Tasa alta de 401 JWT en ge-go-greeter — posible ataque o credenciales expiradas"
+            description: |
+              {{ $value | humanize }} respuestas 401 en 5 minutos superan el umbral de 10.
+
+              Acciones recomendadas:
+              1. Verificar si hubo una rotación reciente del client_secret en Keycloak
+              2. Revisar los logs de Envoy: kubectl logs -n envoy-gateway -l app.kubernetes.io/name=envoy
+              3. Revisar logs de Keycloak: kubectl logs -n keycloak -l app=keycloak
+              4. Si es un ataque: considerar rate-limiting en Envoy Gateway
