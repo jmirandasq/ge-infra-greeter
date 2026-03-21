@@ -24,13 +24,10 @@ spec:
     providers:
       - name: keycloak
         # Issuer debe coincidir exactamente con el claim "iss" del JWT
-        issuer: "http://192.168.1.20:30080/realms/ge-app"
+        issuer: "http://keycloak.192.168.1.20.nip.io:30080/realms/ge-app"
         # JWKS URI — Envoy descarga y cachea las claves públicas de Keycloak
         remoteJWKS:
           uri: "http://keycloak.keycloak.svc.cluster.local:8080/realms/ge-app/protocol/openid-connect/certs"
-        # Audience: debe coincidir con "aud" en el JWT (por defecto: account)
-        audiences:
-          - account
         # Claims a extraer del JWT y pasar como headers al upstream
         claimToHeaders:
           - claim: sub
