@@ -17,8 +17,10 @@ jobs:
       - name: Apply namespace
         run: kubectl apply -f keycloak/namespace.yaml
 
-      - name: Apply operator (CRDs + RBAC + Deployment)
-        run: kubectl apply -f keycloak/operator.yaml
+      - name: Apply CRDs
+        run: |
+          kubectl apply -f keycloak/crd-keycloaks.yaml
+          kubectl apply -f keycloak/crd-keycloakrealmimports.yaml
 
       - name: Wait for CRDs to be established
         run: |
@@ -26,6 +28,9 @@ jobs:
             --for=condition=Established --timeout=60s
           kubectl wait crd/keycloakrealmimports.k8s.keycloak.org \
             --for=condition=Established --timeout=60s
+
+      - name: Apply operator (RBAC + Deployment)
+        run: kubectl apply -n keycloak -f keycloak/operator.yaml
 
       - name: Apply PostgreSQL
         run: kubectl apply -f keycloak/postgres.yaml
