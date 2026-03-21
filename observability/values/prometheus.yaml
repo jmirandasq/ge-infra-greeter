@@ -59,7 +59,7 @@ grafana:
                     to: 0
                   datasourceUid: prometheus
                   model:
-                    expr: 'sum(increase(envoy_http_downstream_rq_total{response_code="401"}[5m]))'
+                    expr: 'sum(increase(envoy_cluster_external_upstream_rq{envoy_response_code="401"}[5m]))'
                     instant: true
                     refId: A
                 - refId: B
