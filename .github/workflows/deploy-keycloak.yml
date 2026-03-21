@@ -36,12 +36,5 @@ jobs:
       - name: Apply Keycloak CR
         run: kubectl apply -f keycloak/keycloak.yaml
 
-      - name: Wait for Keycloak to be Ready
-        run: |
-          kubectl wait keycloak/keycloak \
-            --for=condition=Ready \
-            --namespace keycloak \
-            --timeout=5m
-
       - name: Show status
         run: kubectl get pods -n keycloak
