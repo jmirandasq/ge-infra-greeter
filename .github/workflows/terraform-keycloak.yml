@@ -1,0 +1,66 @@
+name: Terraform Keycloak
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'terraform/**'
+  workflow_dispatch:
+
+jobs:
+  plan:
+    name: Terraform Plan
+    runs-on: self-hosted
+    defaults:
+      run:
+        working-directory: terraform
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+
+      - name: Init
+        run: terraform init
+
+      - name: Plan
+        run: |
+          terraform plan \
+            -var="keycloak_url=${{ vars.KEYCLOAK_URL }}" \
+            -var="keycloak_admin_user=${{ vars.KEYCLOAK_ADMIN_USER }}" \
+            -var="keycloak_admin_password=${{ secrets.KEYCLOAK_ADMIN_PASSWORD }}" \
+            -var="realm_id=${{ vars.REALM_ID }}" \
+            -var="client_id=${{ vars.CLIENT_ID }}" \
+            -out=tfplan
+
+      - name: Upload plan
+        uses: actions/upload-artifact@v4
+        with:
+          name: tfplan
+          path: terraform/tfplan
+
+  apply:
+    name: Terraform Apply
+    runs-on: self-hosted
+    needs: plan
+    environment: keycloak-apply
+    defaults:
+      run:
+        working-directory: terraform
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+
+      - name: Init
+        run: terraform init
+
+      - name: Download plan
+        uses: actions/download-artifact@v4
+        with:
+          name: tfplan
+          path: terraform
+
+      - name: Apply
+        run: terraform apply -auto-approve tfplan
