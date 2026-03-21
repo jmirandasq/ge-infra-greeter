@@ -1,13 +1,39 @@
-# apiVersion: gateway.envoyproxy.io/v1alpha1
-# kind: SecurityPolicy
-# metadata:
-#   name: go-app-basic-auth
-#   namespace: ge-go-greeter
-# spec:
-#   targetRefs:
-#     - group: gateway.networking.k8s.io
-#       kind: HTTPRoute
-#       name: go-app
-#   basicAuth:
-#     users:
-#       name: basic-auth-users
+# SecurityPolicy de Envoy Gateway — Validación JWT via Keycloak
+#
+# Envoy intercepta cada request en HTTPRoute "go-app" y valida el JWT:
+#   1. Extrae el token del header "Authorization: Bearer <jwt>"
+#   2. Descarga la clave pública desde el JWKS URI de Keycloak
+#   3. Verifica la firma, el issuer y la expiración
+#   4. Si el JWT es inválido/ausente → responde 401 (antes de llegar al app)
+#   5. Si el JWT es válido → reenvía el request al upstream con los claims
+#
+# Para obtener un token:
+#   curl -s -X POST http://192.168.1.20:30080/realms/ge-app/protocol/openid-connect/token \
+#     -d "grant_type=client_credentials&client_id=ge-go-greeter&client_secret=<secret>"
+apiVersion: gateway.envoyproxy.io/v1alpha1
+kind: SecurityPolicy
+metadata:
+  name: go-app-jwt-auth
+  namespace: ge-go-greeter
+spec:
+  targetRefs:
+    - group: gateway.networking.k8s.io
+      kind: HTTPRoute
+      name: go-app
+  jwt:
+    providers:
+      - name: keycloak
+        # Issuer debe coincidir exactamente con el claim "iss" del JWT
+        issuer: "http://192.168.1.20:30080/realms/ge-app"
+        # JWKS URI — Envoy descarga y cachea las claves públicas de Keycloak
+        remoteJWKS:
+          uri: "http://keycloak.keycloak.svc.cluster.local:8080/realms/ge-app/protocol/openid-connect/certs"
+        # Audience: debe coincidir con "aud" en el JWT (por defecto: account)
+        audiences:
+          - account
+        # Claims a extraer del JWT y pasar como headers al upstream
+        claimToHeaders:
+          - claim: sub
+            header: x-jwt-subject
+          - claim: preferred_username
+            header: x-jwt-username

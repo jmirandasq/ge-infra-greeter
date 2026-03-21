@@ -1,6 +1,28 @@
 apiVersion: gateway.networking.k8s.io/v1
 kind: HTTPRoute
 metadata:
+  name: go-app-public
+  namespace: ge-go-greeter
+spec:
+  parentRefs:
+    - name: go-app-gateway
+      namespace: ge-go-greeter
+  rules:
+    - matches:
+        - path:
+            type: PathPrefix
+            value: /health
+      backendRefs:
+        - name: go-app-stable
+          port: 80
+          weight: 80
+        - name: go-app-canary
+          port: 80
+          weight: 20
+---
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
   name: go-app
   namespace: ge-go-greeter
 spec:
@@ -8,18 +30,23 @@ spec:
     - name: go-app-gateway
       namespace: ge-go-greeter
   rules:
-    # A/B Testing: requests con header X-Version: canary van 100% al canary
     - matches:
         - headers:
             - name: X-Version
               value: abtest
+          path:
+            type: PathPrefix
+            value: /greet
       backendRefs:
         - name: go-app-canary
           port: 80
           weight: 100
 
-    # Canary: trafico por defecto 80% stable / 20% canary
-    - backendRefs:
+    - matches:
+        - path:
+            type: PathPrefix
+            value: /greet
+      backendRefs:
         - name: go-app-stable
           port: 80
           weight: 80
